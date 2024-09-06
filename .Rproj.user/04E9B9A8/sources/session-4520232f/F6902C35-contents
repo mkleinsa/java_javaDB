@@ -1,0 +1,148 @@
+---
+title: "Java and Java DB instructions"
+format: html
+editor: visual
+---
+
+Set up and configure R/RStudio to work with Java and a connection to a Java DB.
+
+## 1) Dependencies
+
+Skip down to "Get OJDBC 6" if you prefer to use the Java version already on your computer.
+
+### Get JDK
+
+First check if your system has Java:
+
+`java -version`
+
+If you've got it, I'd see if the database software works, and if there are no issues continue rather than switching to an older version of JDK.
+
+If you want to download Java using homebrew, try these instructions:
+
+Do you have Homebrew? and if not install with:
+
+`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+
+Use Homebrew to install:
+
+`brew install openjdk`
+
+For instructions on setting the path, go to section 2.
+
+*(skip this unless downloading a specific version of JDK) - this section was not successful.*
+
+*Download Java JDK:*
+
+*JDK 6-8 was recommended by ChatGPT for compatibility with OJDBC 6, so let's go with JDK 8*
+
+*Download link:*
+
+[*https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html*](https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html){.uri}
+
+*Have to register (annoying). Only had a x86 binary file for MacOS - did not work.*
+
+*Open the .dmg, follow the default installation instructions, and test the install by opening a terminal and running:*
+
+*`java -version`*
+
+*Since you probably already have Java on the system, there is some work to switch to the preferred one.*
+
+### Get OJDBC 6
+
+Download OJDBC 6 (or other version) from Maven repository.
+
+OJDBC Version 6 specifically:
+
+<https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc6/11.2.0.4/ojdbc6-11.2.0.4.jar>
+
+Where do I place this dependency?
+
+-   Project level - place in a project sub-folder if the .jar file is only used for this project. One advantage to this is that the .jar file goes where your project goes. Place in sub folder lib/
+
+-   System wide - if intent is to use it elsewhere
+
+## 2) Environment Variables
+
+There are a few different ways to manage environment variables. The .Renviron file, either global or local (or both) provide R-level control over the environment. Since the primary intent of this work is R, it is recommended to stick with .Renviron.
+
+I'd first try sticking with the default Java installation and see if you really need the JAVA_HOME path set. I did not need to set it.
+
+If everything just works, look no further. If not, let's try
+
+`sudo R CMD javareconf`
+
+Find your .Renviron file if it exists in your home directory. At terminal, write:
+
+`ls -a ~ | grep .Renviron`
+
+If you don't have one, create one with. Can use same command to edit one:
+
+`nano ~/.Renviron`
+
+Adding lines to the file. We need to add a JAVA_HOME=/path/to to the file.
+
+How do I find the path to Java version that I want to use?
+
+`/usr/libexec/java_home -V`
+
+will give you all currently installed version of Java
+
+Since I want to switch to Java 8, I need to run:
+
+`/usr/libexec/java_home -v 1.8`
+
+For example, the path returned is:
+
+`/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home`
+
+Finally, set the variable in .Renviron with:
+
+`JAVA_HOME=/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home`
+
+Easiest way to edit the file is with nano:
+
+`nano ~/.Renviron`
+
+Edit it, save with ctrl+o, enter. Exit with ctrl+x.
+
+Restart R and check your Java path.
+
+## 3) Test Java and Java DB connection
+
+I placed the OJDBC6 Jar file in lib/, so it is at:
+
+`java/lib/ojdbc6-11.2.0.4.jar`
+
+where the project directory is called `java`.
+
+Do a fresh install of rJava package.
+
+``` r
+# install.packages("rJava")
+library(rJava)
+```
+
+Install the Java DB interface package.
+
+``` r
+# install.packages("RJDBC")
+library(RJDBC)
+```
+
+Set up the driver for your Java database using the OJDK jar file:
+
+``` r
+drv <- JDBC("oracle.jdbc.driver.OracleDriver", "lib/ojdbc6-11.2.0.4.jar")
+```
+
+Username/password and connect. This part I can't test easily.
+
+``` r
+tryCatch({
+    conn <- dbConnect(drv, "jdbc:your_database_url", "username", "password")
+    print("Success.")
+  }, error = \(e) {
+    e$message
+})
+```
